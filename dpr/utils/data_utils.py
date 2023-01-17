@@ -42,10 +42,10 @@ def read_data_from_json_files(paths: List[str]) -> List:
     results = []
     for i, path in enumerate(paths):
         with open(path, "r", encoding="utf-8") as f:
-            logger.info("Reading file %s" % path)
+            logger.info("开始读取文件: %s" % path)
             data = json.load(f)
             results.extend(data)
-            logger.info("Aggregated data size: {}".format(len(results)))
+            logger.info("最终数据的大小是: {}".format(len(results)))
     return results
 
 

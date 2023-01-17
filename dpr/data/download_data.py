@@ -424,10 +424,10 @@ def download_resource(
     pathlib.Path(save_root).mkdir(parents=True, exist_ok=True)
 
     local_file_uncompressed = os.path.abspath(os.path.join(save_root, path_names[-1] + original_ext))
-    logger.info("File to be downloaded as %s", local_file_uncompressed)
+    logger.info("文件将下载到 %s", local_file_uncompressed)
 
     if os.path.exists(local_file_uncompressed):
-        logger.info("File already exist %s", local_file_uncompressed)
+        logger.info("文件已经存在了： %s", local_file_uncompressed)
         return save_root, local_file_uncompressed
 
     local_file = os.path.abspath(os.path.join(save_root, path_names[-1] + (".tmp" if compressed else original_ext)))
@@ -449,7 +449,7 @@ def download_file(s3_url: str, out_dir: str, file_name: str):
     local_file = os.path.join(out_dir, file_name)
 
     if os.path.exists(local_file):
-        logger.info("File already exist %s", local_file)
+        logger.info("文件已经存在: %s", local_file)
         return
 
     wget.download(s3_url, out=local_file)

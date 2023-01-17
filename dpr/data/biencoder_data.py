@@ -72,11 +72,11 @@ class JsonQADataset(Dataset):
 
     def _load_all_data(self):
         self.data_files = get_dpr_files(self.file)
-        logger.info("Data files: %s", self.data_files)
+        logger.info("数据文件是 : %s", self.data_files)
         data = read_data_from_json_files(self.data_files)
-        # filter those without positive ctx
+        # 过滤掉那些没有正样本的上下文的数据
         self.data = [r for r in data if len(r["positive_ctxs"]) > 0]
-        logger.info("Total cleaned data size: %d", len(self.data))
+        logger.info("清理后的数据剩余: %d", len(self.data))
 
     def __getitem__(self, index) -> BiEncoderSample:
         json_sample = self.data[index]
