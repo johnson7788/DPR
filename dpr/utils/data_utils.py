@@ -224,7 +224,7 @@ class ShardedDataIterator(object):
         self.max_iterations = 0
 
     def calculate_shards(self):
-        logger.info("Calculating shard positions")
+        logger.info("计算碎片的位置")
         shards_num = max(self.num_shards, 1)
         shard_id = max(self.shard_id, 0)
 

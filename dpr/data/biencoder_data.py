@@ -59,7 +59,7 @@ class JsonQADataset(Dataset):
 
     def calc_total_data_len(self):
         if not self.data:
-            logger.info("Loading all data")
+            logger.info("加载所有数据")
             self._load_all_data()
         return len(self.data)
 

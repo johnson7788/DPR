@@ -147,7 +147,7 @@ def get_model_file(args, file_prefix) -> str:
         return args.model_file
 
     out_cp_files = glob.glob(os.path.join(args.output_dir, file_prefix + "*")) if args.output_dir else []
-    logger.info("Checkpoint files %s", out_cp_files)
+    logger.info("找到的checkpoints文件是 %s", out_cp_files)
     model_file = None
 
     if len(out_cp_files) > 0:

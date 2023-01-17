@@ -57,19 +57,19 @@ setup_logger(logger)
 
 class BiEncoderTrainer(object):
     """
-    BiEncoder training pipeline component. Can be used to initiate or resume training and validate the trained model
-    using either binary classification's NLL loss or average rank of the question's gold passages across dataset
-    provided pools of negative passages. For full IR accuracy evaluation, please see generate_dense_embeddings.py
-    and dense_retriever.py CLI tools.
+    BiEncoder训练pipeline组件。可用于启动或恢复训练，并验证训练后的模型
+    使用二分类的NLL损失或问题的glod段落在数据集中的平均排名
+    提供的负样本段落池。关于完整的IR准确性评估，请参见 generate_dense_embeddings.py
+    和dense_retriever.py CLI工具。
     """
 
     def __init__(self, cfg: DictConfig):
         self.shard_id = cfg.local_rank if cfg.local_rank != -1 else 0
         self.distributed_factor = cfg.distributed_world_size or 1
 
-        logger.info("***** Initializing components for training *****")
+        logger.info("***** 为训练初始化组件 *****")
 
-        # if model file is specified, encoder parameters from saved state should be used for initialization
+        # 如果指定了模型文件，使用checkpoint的编码器参数进行初始化
         model_file = get_model_file(cfg, cfg.checkpoint_file_name)
         saved_state = None
         if model_file:
@@ -117,7 +117,7 @@ class BiEncoderTrainer(object):
         sampling_rates = self.ds_cfg.sampling_rates
 
         logger.info(
-            "Initializing task/set data %s",
+            " 初始化数据集 task/set data %s",
             self.ds_cfg.train_datasets_names if is_train_set else self.ds_cfg.dev_datasets_names,
         )
 
@@ -762,7 +762,7 @@ def main(cfg: DictConfig):
     if cfg.local_rank in [-1, 0]:
         logger.info("CFG (after gpu  configuration):")
         logger.info("%s", OmegaConf.to_yaml(cfg))
-
+    # 加载模型
     trainer = BiEncoderTrainer(cfg)
 
     if cfg.train_datasets and len(cfg.train_datasets) > 0:
@@ -784,7 +784,7 @@ if __name__ == "__main__":
             hydra_formatted_args.append(arg[len("--") :])
         else:
             hydra_formatted_args.append(arg)
-    logger.info("Hydra formatted Sys.argv: %s", hydra_formatted_args)
+    logger.info("Hydra 格式的命令参数 Sys.argv: %s", hydra_formatted_args)
     sys.argv = hydra_formatted_args
 
     main()

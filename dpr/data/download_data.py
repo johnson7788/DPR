@@ -405,7 +405,7 @@ def unpack(gzip_file: str, out_file: str):
 def download_resource(
     s3_url: str, original_ext: str, compressed: bool, resource_key: str, out_dir: str
 ) -> Tuple[str, str]:
-    logger.info("Requested resource from %s", s3_url)
+    logger.info("要求的资源来自 %s", s3_url)
     path_names = resource_key.split(".")
 
     if out_dir:
@@ -417,7 +417,7 @@ def download_resource(
         if "/outputs/" in root_dir:
             root_dir = root_dir[: root_dir.index("/outputs/")]
 
-    logger.info("Download root_dir %s", root_dir)
+    logger.info("下载数据的根目录是: %s", root_dir)
 
     save_root = os.path.join(root_dir, "downloads", *path_names[:-1])  # last segment is for file name
 
