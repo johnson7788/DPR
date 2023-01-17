@@ -286,7 +286,7 @@ class BertTensorizer(Tensorizer):
         apply_max_len: bool = True,
     ):
         text = text.strip()
-        # tokenizer automatic padding is explicitly disabled since its inconsistent behavior
+        # tokenizer的自动填充被明确地禁用，因为它的行为不一致。
         # TODO: move max len to methods params?
 
         if title:

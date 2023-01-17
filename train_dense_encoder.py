@@ -156,7 +156,7 @@ class BiEncoderTrainer(object):
             rank=cfg.local_rank,
         )
         max_iterations = train_iterator.get_max_iterations()
-        logger.info("  Total iterations per epoch=%d", max_iterations)
+        logger.info("每个epoch最大迭代次数是=%d", max_iterations)
         if max_iterations == 0:
             logger.warning("No data found for training.")
             return
@@ -164,7 +164,7 @@ class BiEncoderTrainer(object):
         updates_per_epoch = train_iterator.max_iterations // cfg.train.gradient_accumulation_steps
 
         total_updates = updates_per_epoch * cfg.train.num_train_epochs
-        logger.info(" Total updates=%d", total_updates)
+        logger.info("总共更新step数量是=%d", total_updates)
         warmup_steps = cfg.train.warmup_steps
 
         if self.scheduler_state:
@@ -443,8 +443,8 @@ class BiEncoderTrainer(object):
 
         log_result_step = cfg.train.log_batch_step
         rolling_loss_step = cfg.train.train_rolling_loss_step
-        num_hard_negatives = cfg.train.hard_negatives
-        num_other_negatives = cfg.train.other_negatives
+        num_hard_negatives = cfg.train.hard_negatives  # 训练中使用的困难负样本数量
+        num_other_negatives = cfg.train.other_negatives  #训练中使用的普通负样本数量
         seed = cfg.seed
         self.biencoder.train()
         epoch_batches = train_data_iterator.max_iterations
@@ -476,7 +476,7 @@ class BiEncoderTrainer(object):
                 query_token=special_token,
             )
 
-            # get the token to be used for representation selection
+            # 获得用于表示选择的token
             from dpr.utils.data_utils import DEFAULT_SELECTOR
 
             selector = ds_cfg.selector if ds_cfg else DEFAULT_SELECTOR
@@ -611,8 +611,8 @@ def _calc_loss(
     loss_scale: float = None,
 ) -> Tuple[T, bool]:
     """
-    Calculates In-batch negatives schema loss and supports to run it in DDP mode by exchanging the representations
-    across all the nodes.
+    计算批内负样本模式的损失，并支持在DDP模式下通过在所有节点上交换表示来运行
+    在所有节点上交换表示。
     """
     distributed_world_size = cfg.distributed_world_size or 1
     if distributed_world_size > 1:
@@ -694,7 +694,7 @@ def _do_biencoder_fwd_pass(
 ) -> Tuple[torch.Tensor, int]:
 
     input = BiEncoderBatch(**move_to_device(input._asdict(), cfg.device))
-
+    # q_attn_mask:[16,256], ctx_attn_mask: [32,256]
     q_attn_mask = tensorizer.get_attn_mask(input.question_ids)
     ctx_attn_mask = tensorizer.get_attn_mask(input.context_ids)
 
@@ -721,7 +721,7 @@ def _do_biencoder_fwd_pass(
                 encoder_type=encoder_type,
                 representation_token_pos=rep_positions,
             )
-
+    # 问题的表示向量和上下文的表示向量
     local_q_vector, local_ctx_vectors = model_out
 
     loss_function = BiEncoderNllLoss()

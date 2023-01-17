@@ -386,7 +386,7 @@ class MultiSetDataIterator(object):
 
     def iterate_ds_data(self, epoch: int = 0) -> Iterator[Tuple[List, int]]:
 
-        logger.info("rank=%d; Iteration start", self.rank)
+        logger.info("rank=%d; 开始迭代", self.rank)
         logger.info(
             "rank=%d; Multi set iteration: iteration ptr per set: %s",
             self.rank,
@@ -407,14 +407,14 @@ class MultiSetDataIterator(object):
             iterators.append(self.iterables[source].iterate_ds_sampled_data(src_its, epoch=epoch))
 
         if self.shuffle:
-            # to be able to resume, same shuffling should be used when starting from a failed/stopped iteration
+            # 为了能够恢复，在从失败/停止的迭代开始时，应该使用同样的打乱方式。
             epoch_rnd = random.Random(self.shuffle_seed + epoch)
             epoch_rnd.shuffle(data_src_indices)
 
         logger.info("rank=%d; data_src_indices len=%d", self.rank, len(data_src_indices))
         for i, source_idx in enumerate(data_src_indices):
             it = iterators[source_idx]
-            next_item = next(it, None)
+            next_item = next(it, None)  #next_item:一个批次的数据,list, 里面是每个样本，每个样本包含正负样本，困难样本，和查询query
             if next_item is not None:
                 self.iteration += 1
                 yield (next_item, source_idx)

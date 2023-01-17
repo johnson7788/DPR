@@ -111,8 +111,8 @@ def get_schedule_linear(
     last_epoch=-1,
 ):
 
-    """Create a schedule with a learning rate that decreases linearly after
-    linearly increasing during a warmup period.
+    """创建一个时间表，其学习率在warm-up期线性上升后线性下降。
+    在warmup期间线性增加。
     """
 
     def lr_lambda(current_step):

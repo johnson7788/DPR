@@ -122,6 +122,7 @@ class BiEncoder(nn.Module):
         representation_token_pos=0,
     ) -> Tuple[T, T]:
         q_encoder = self.question_model if encoder_type is None or encoder_type == "question" else self.ctx_model
+        # _q_seq: [16,256,768], q_pooled_out:[16,768], _q_hidden: None
         _q_seq, q_pooled_out, _q_hidden = self.get_representation(
             q_encoder,
             question_ids,
@@ -130,12 +131,11 @@ class BiEncoder(nn.Module):
             self.fix_q_encoder,
             representation_token_pos=representation_token_pos,
         )
-
         ctx_encoder = self.ctx_model if encoder_type is None or encoder_type == "ctx" else self.question_model
+        # _ctx_seq: [32,256,768], ctx_pooled_out: [32,768], _ctx_hidden:None
         _ctx_seq, ctx_pooled_out, _ctx_hidden = self.get_representation(
             ctx_encoder, context_ids, ctx_segments, ctx_attn_mask, self.fix_ctx_encoder
         )
-
         return q_pooled_out, ctx_pooled_out
 
     def create_biencoder_input(
@@ -151,20 +151,20 @@ class BiEncoder(nn.Module):
         query_token: str = None,
     ) -> BiEncoderBatch:
         """
-        Creates a batch of the biencoder training tuple.
-        :param samples: list of BiEncoderSample-s to create the batch for
-        :param tensorizer: components to create model input tensors from a text sequence
-        :param insert_title: enables title insertion at the beginning of the context sequences
-        :param num_hard_negatives: amount of hard negatives per question (taken from samples' pools)
-        :param num_other_negatives: amount of other negatives per question (taken from samples' pools)
-        :param shuffle: shuffles negative passages pools
+        创建一批双编码器训练元组。
+        :param samples: 列表中的BiEncoderSample-s来创建批次。
+        :param tensorizer: 组件，从一个文本序列中创建模型输入张量, Bert的tokenizer
+        :param insert_title: 使得标题在上下文序列的开头插入。bool True or False
+        :param num_hard_negatives: 每个问题的困难负样本数量, eg: 1 (taken from samples' pools)
+        :param num_other_negatives: 每个问题的其他负样本的数量 (taken from samples' pools)
+        :param shuffle: bool: 是否对负样本段落池进行shuffle
         :param shuffle_positives: shuffles positive passages pools
         :return: BiEncoderBatch tuple
         """
         question_tensors = []
-        ctx_tensors = []
-        positive_ctx_indices = []
-        hard_neg_ctx_indices = []
+        ctx_tensors = []  #一个批次的所有上下文的tensor
+        positive_ctx_indices = []  #正样本的上下文的tensor的位置idx, eg：[0]
+        hard_neg_ctx_indices = []  #负样本的上下的位置的idx，对应的是ctx_tensors中的位置， eg: [[1]]
 
         for sample in samples:
             # ctx+ & [ctx-] composition
@@ -174,29 +174,29 @@ class BiEncoder(nn.Module):
                 positive_ctxs = sample.positive_passages
                 positive_ctx = positive_ctxs[np.random.choice(len(positive_ctxs))]
             else:
-                positive_ctx = sample.positive_passages[0]
-
-            neg_ctxs = sample.negative_passages
-            hard_neg_ctxs = sample.hard_negative_passages
-            question = sample.query
+                positive_ctx = sample.positive_passages[0]  # 正样本的上下文内容【text,title]
+            # 负样本
+            neg_ctxs = sample.negative_passages  #list:[50]
+            hard_neg_ctxs = sample.hard_negative_passages  #困难负样本, list:[98]
+            question = sample.query  #问题: eg: 'when is the next series of greenhouse academy coming out'
             # question = normalize_question(sample.query)
-
+            # 对负样本进行打乱
             if shuffle:
                 random.shuffle(neg_ctxs)
                 random.shuffle(hard_neg_ctxs)
 
             if hard_neg_fallback and len(hard_neg_ctxs) == 0:
                 hard_neg_ctxs = neg_ctxs[0:num_hard_negatives]
-
+            # 截取部分负样本和部分困难负样本，根据num_other_negatives和num_hard_negatives
             neg_ctxs = neg_ctxs[0:num_other_negatives]
             hard_neg_ctxs = hard_neg_ctxs[0:num_hard_negatives]
-
+            # 所有的上下，正样本，负样本，困难负样本
             all_ctxs = [positive_ctx] + neg_ctxs + hard_neg_ctxs
             hard_negatives_start_idx = 1
             hard_negatives_end_idx = 1 + len(hard_neg_ctxs)
 
             current_ctxs_len = len(ctx_tensors)
-
+            # 对所有的上下文文本变成id, sample_ctxs_tensors: list, 每个元素是（256，）
             sample_ctxs_tensors = [
                 tensorizer.text_to_tensor(ctx.text, title=ctx.title if (insert_title and ctx.title) else None)
                 for ctx in all_ctxs
@@ -223,7 +223,7 @@ class BiEncoder(nn.Module):
                     question_tensors.append(tensorizer.text_to_tensor(" ".join([query_token, question])))
             else:
                 question_tensors.append(tensorizer.text_to_tensor(question))
-
+        # ctxs_tensor:【32，,256】, questions_tensor: [16,256]
         ctxs_tensor = torch.cat([ctx.view(1, -1) for ctx in ctx_tensors], dim=0)
         questions_tensor = torch.cat([q.view(1, -1) for q in question_tensors], dim=0)
 
@@ -254,26 +254,26 @@ class BiEncoder(nn.Module):
 class BiEncoderNllLoss(object):
     def calc(
         self,
-        q_vectors: T,
-        ctx_vectors: T,
-        positive_idx_per_question: list,
-        hard_negative_idx_per_question: list = None,
-        loss_scale: float = None,
+        q_vectors: T,   # 查询问题的向量
+        ctx_vectors: T,  # 所有的上下向量
+        positive_idx_per_question: list,   #ground truth, 每个问题对应的真正的上下的位置，这个位置是在ctx_vectors中的某个位置
+        hard_negative_idx_per_question: list = None,  #每个问题的负样本的上下的向量在ctx_vectors中的位置
+        loss_scale: float = None, #损失是否缩放
     ) -> Tuple[T, int]:
         """
-        Computes nll loss for the given lists of question and ctx vectors.
-        Note that although hard_negative_idx_per_question in not currently in use, one can use it for the
-        loss modifications. For example - weighted NLL with different factors for hard vs regular negatives.
-        :return: a tuple of loss value and amount of correct predictions per batch
+        计算给定问题和ctx向量列表的nll损失。
+        请注意，虽然目前没有使用hard_negative_idx_per_question，但可以将其用于
+        损失的修改。例如 - 加权的NLL，对困难负例和普通负例有不同的系数。
+        :return: 每个批次的损失值和正确预测量的元组
         """
+        # 问题向量和上下文向量的相似度计算，get_scores：默认是矩阵相乘
         scores = self.get_scores(q_vectors, ctx_vectors)
-
         if len(q_vectors.size()) > 1:
             q_num = q_vectors.size(0)
             scores = scores.view(q_num, -1)
 
         softmax_scores = F.log_softmax(scores, dim=1)
-
+        # positive_idx_per_question: target，即ground truth, eg: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]
         loss = F.nll_loss(
             softmax_scores,
             torch.tensor(positive_idx_per_question).to(softmax_scores.device),
